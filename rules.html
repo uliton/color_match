@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon.png">
+<title>Правила гри · Color Match</title>
+<script>
+try {
+  const theme = localStorage.getItem('color-match-theme');
+  document.documentElement.dataset.theme = theme === 'dark' || theme === 'light'
+    ? theme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+} catch {}
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f5f6f8;
+    --text: #27313d;
+    --muted: #5f6b79;
+    --panel: #fff;
+    --border: #dce1e7;
+    --accent: #263d58;
+    --dot: #598bcb;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #151a22;
+    --text: #eef2f8;
+    --muted: #b3bfcd;
+    --panel: #212936;
+    --border: #3e4a5b;
+    --accent: #a8c8ec;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 16px/1.55 system-ui, -apple-system, sans-serif; }
+  main { max-width: 540px; margin: auto; padding: 20px 16px 36px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  h1 { margin: 10px 0 8px; font-size: 30px; }
+  h2 { margin: 24px 0 8px; font-size: 20px; }
+  p { margin: 8px 0; }
+  .back { display: inline-block; padding: 8px 0; }
+  .patterns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+  .patterns li { display: grid; place-items: center; gap: 6px; padding: 8px; background: var(--panel); border-radius: 12px; }
+  .diagram { display: grid; place-items: center; min-height: 48px; color: var(--dot); font: 14px/1 monospace; letter-spacing: 2px; margin: 0; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 12px; }
+  th, td { padding: 8px; text-align: center; }
+  th { color: var(--muted); font-size: 13px; }
+  tbody tr { border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="./index.html">← До гри</a>
+  <h1>Правила Color Match</h1>
+  <p>Поміняй місцями дві сусідні фігури свайпом або двома дотиками. Якщо комбінації немає, фігури повертаються на місця, а хід не зараховується.</p>
+
+  <h2>Комбінації</h2>
+  <p>Збирай фігури одного кольору в горизонтальну чи вертикальну лінію з трьох або більше, або у квадрат 2×2. Лінії й квадрати, які мають спільну клітинку, рахуються як одна група. Дві трійки зі спільною клітинкою утворюють групу з п’яти.</p>
+  <ul class="patterns">
+    <li><pre class="diagram" aria-hidden="true">●●●</pre>Лінія</li>
+    <li><pre class="diagram" aria-hidden="true">●●
+●●</pre>Квадрат 2×2</li>
+    <li><pre class="diagram" aria-hidden="true">  ●
+  ●
+●●●</pre>Кут</li>
+    <li><pre class="diagram" aria-hidden="true">●●●
+ ●
+ ●</pre>Літера Т</li>
+  </ul>
+  <p>Хрест теж утворює групу з п’яти, якщо дві трійки перетинаються посередині. Діагоналі не зараховуються.</p>
+
+  <h2>Очки й час</h2>
+  <p>Партія починається зі 120 секунд. За кожну незалежну групу нараховується бонус часу, а загальний запас обмежено 180 секундами.</p>
+  <table>
+    <thead><tr><th scope="col">Фігур у групі</th><th scope="col">Очки в першій хвилі*</th><th scope="col">Додатковий час</th></tr></thead>
+    <tbody>
+      <tr><td>3</td><td>30</td><td>0 с</td></tr>
+      <tr><td>4</td><td>40</td><td>+3 с</td></tr>
+      <tr><td>5 і більше</td><td>50 і більше</td><td>+5 с</td></tr>
+    </tbody>
+  </table>
+  <p>* Кожна прибрана фігура дає 10 очок, помножених на номер хвилі каскаду. Наприклад, три фігури у другій хвилі дають 60 очок. Спільну фігуру рахують лише один раз. Бонус часу діє за тими самими правилами в усіх хвилях.</p>
+
+  <h2>Щити й стіни</h2>
+  <p>На складності 2 і 3 перша лінія або квадрат знімає щит, а другий збіг прибирає фігуру. Якщо фігура одночасно входить у два збіги, щит і фігура можуть зникнути за один хід. Очки нараховуються за прибирання фігури. На складності 3 стіни займають клітинки й переривають комбінації та падіння.</p>
+</main>
+</body>
+</html>

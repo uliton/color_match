@@ -69,6 +69,7 @@
   .game-header .logo { --dot-size: 11px; gap: 3px; margin: 0; }
   .logo span { background: var(--dot); border-radius: 50%; box-shadow: inset 0 2px 3px #ffffff70; }
   #setupForm { display: grid; gap: 20px; }
+  .rules-link { display: table; margin: 10px auto 0; padding: 8px 12px; color: var(--muted); font-size: 13px; text-underline-offset: 3px; }
   fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
   legend { font-weight: 650; padding: 0; margin-bottom: 8px; }
   .choice-options { display: grid; grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr)); gap: 8px; }
@@ -218,6 +219,7 @@
       </fieldset>
       <button type="submit" class="primary" id="play">ГРАТИ</button>
     </form>
+    <a class="rules-link" href="./rules.html">Правила гри</a>
   </section>
   <section id="game" class="game" aria-labelledby="gameTitle" hidden>
     <header class="game-header">
@@ -308,8 +310,8 @@ function buildField() {
   balls = cells.map(cell => cell.firstElementChild);
 }
 
-function matchLines(b) {
-  const lines = [];
+function matchPatterns(b) {
+  const patterns = [];
   for (const stride of [1, size]) {
     for (let line = 0; line < size; line++) {
       const start = stride === 1 ? line * size : line;
@@ -318,28 +320,46 @@ function matchLines(b) {
         let end = from + 1;
         while (end < size && color != null && b[start + end * stride]?.color === color) end++;
         if (color != null && end - from >= 3) {
-          lines.push(Array.from({ length: end - from }, (_, i) => start + (from + i) * stride));
+          patterns.push(Array.from({ length: end - from }, (_, i) => start + (from + i) * stride));
         }
         from = end;
       }
     }
   }
-  return lines;
+  for (let y = 0; y < size - 1; y++) {
+    for (let x = 0; x < size - 1; x++) {
+      const i = y * size + x;
+      const color = b[i]?.color;
+      const rest = [i + 1, i + size, i + size + 1];
+      if (color != null && rest.every(j => b[j]?.color === color)) patterns.push([i, ...rest]);
+    }
+  }
+  return patterns;
 }
 
-function lineTiles(b) {
-  return matchLines(b).map(line => new Set(line.map(i => b[i])));
+function patternTiles(b) {
+  return matchPatterns(b).map(pattern => new Set(pattern.map(i => b[i])));
 }
 
-function newLines(b, previousLines) {
-  // A line that survives shield damage must form a new combination to count again.
-  return matchLines(b).filter(line =>
-    !previousLines.some(previous => line.every(i => previous.has(b[i])))
+function newPatterns(b, previousPatterns) {
+  // A pattern that survives shield damage must form a new combination to count again.
+  return matchPatterns(b).filter(pattern =>
+    !previousPatterns.some(previous => pattern.every(i => previous.has(b[i])))
   );
 }
 
-function timeBonus(lines) {
-  return lines.reduce((bonus, line) => bonus + (line.length >= 5 ? 6 : line.length === 4 ? 4 : 0), 0);
+function timeBonus(patterns) {
+  const groups = [];
+  for (const pattern of patterns) {
+    const group = new Set(pattern);
+    for (let i = groups.length - 1; i >= 0; i--) {
+      if (!pattern.some(cell => groups[i].has(cell))) continue;
+      for (const cell of groups[i]) group.add(cell);
+      groups.splice(i, 1);
+    }
+    groups.push(group);
+  }
+  return groups.reduce((bonus, group) => bonus + (group.size >= 5 ? 5 : group.size === 4 ? 3 : 0), 0);
 }
 
 function adjacent(a, b) {
@@ -351,12 +371,12 @@ function canSwap(a, b) {
 }
 
 function hasMove(b) {
-  const previousLines = lineTiles(b);
+  const previousPatterns = patternTiles(b);
   for (let i = 0; i < b.length; i++) {
     for (const j of [i % size < size - 1 ? i + 1 : -1, i + size < b.length ? i + size : -1]) {
       if (j < 0 || b[i] === WALL || b[j] === WALL || b[i].color === b[j].color) continue;
       [b[i], b[j]] = [b[j], b[i]];
-      const yes = newLines(b, previousLines).length > 0;
+      const yes = newPatterns(b, previousPatterns).length > 0;
       [b[i], b[j]] = [b[j], b[i]];
       if (yes) return true;
     }
@@ -390,7 +410,9 @@ function generate(walls = placeWalls()) {
       }
       const valid = Array.from({ length: colorCount }, (_, color) => color).filter(color =>
         !(i % size >= 2 && b[i - 1].color === color && b[i - 2].color === color) &&
-        !(i >= 2 * size && b[i - size].color === color && b[i - 2 * size].color === color)
+        !(i >= 2 * size && b[i - size].color === color && b[i - 2 * size].color === color) &&
+        !(i >= size && i % size >= 1 && b[i - 1].color === color &&
+          b[i - size].color === color && b[i - size - 1].color === color)
       );
       b.push(makeBall(valid[rnd(valid.length)]));
     }
@@ -559,11 +581,11 @@ async function exchange(a, b, token, offsetX = 0, offsetY = 0) {
   return true;
 }
 
-function resolveHits(lines) {
+function resolveHits(patterns) {
   const removed = new Set();
   const exposed = new Set();
-  for (const line of lines) {
-    for (const i of line) {
+  for (const pattern of patterns) {
+    for (const i of pattern) {
       const tile = board[i];
       if (removed.has(i)) continue;
       tile.hits--;
@@ -618,12 +640,12 @@ async function swap(a, b, offsetX = 0, offsetY = 0) {
   selected = -1;
   paintBoard();
   const token = session;
-  const previousLines = lineTiles(board);
+  const previousPatterns = patternTiles(board);
   const sameColor = board[a].color === board[b].color;
   if (!await exchange(a, b, token, offsetX, offsetY)) return;
 
-  let lines = sameColor ? [] : newLines(board, previousLines);
-  if (!lines.length) {
+  let patterns = sameColor ? [] : newPatterns(board, previousPatterns);
+  if (!patterns.length) {
     if (!await exchange(b, a, token)) return;
     unlock();
     notify('Немає комбінації — хід скасовано');
@@ -632,13 +654,13 @@ async function swap(a, b, offsetX = 0, offsetY = 0) {
 
   moves++;
   let total = 0, bonus = 0, chain = 0, shields = 0;
-  while (lines.length && chain < 30) {
+  while (patterns.length && chain < 30) {
     chain++;
-    const beforeFall = lineTiles(board);
-    const { removed, exposed } = resolveHits(lines);
+    const beforeFall = patternTiles(board);
+    const { removed, exposed } = resolveHits(patterns);
     shields += exposed.size;
     total += removed.size * 10 * chain;
-    if (mode === 'endless') bonus += timeBonus(lines);
+    if (mode === 'endless') bonus += timeBonus(patterns);
     for (const i of exposed) balls[i].classList.remove('reinforced');
     await Promise.all([...removed].map(i => animateBall(i, [
       { transform: 'scale(1)', opacity: 1 },
@@ -660,13 +682,13 @@ async function swap(a, b, offsetX = 0, offsetY = 0) {
       return animateBall(i, frames, 350 + rows * 28, 'cubic-bezier(.55,.04,.78,.65)');
     }));
     if (token !== session) return;
-    lines = newLines(board, beforeFall);
+    patterns = newPatterns(board, beforeFall);
   }
 
   score += total;
   const credited = mode === 'endless' ? Math.min(180 - time, bonus) : 0;
   time += credited;
-  const reshuffled = lines.length > 0 || !hasMove(board);
+  const reshuffled = patterns.length > 0 || !hasMove(board);
   if (reshuffled) {
     const walls = new Set();
     board.forEach((tile, i) => { if (tile === WALL) walls.add(i); });
