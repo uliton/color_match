@@ -51,7 +51,7 @@
     --selection: #a8c8ec;
     --overlay: #080b11bb;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
   body { margin: 0; background: var(--page); color: var(--text); font: 16px system-ui, -apple-system, sans-serif; }
   [hidden] { display: none !important; }
   main { max-width: 510px; margin: auto; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); min-height: 100vh; min-height: 100svh; }
@@ -120,7 +120,7 @@
   .stat { background: var(--panel); border-radius: 12px; padding: 12px 4px; text-align: center; }
   .stat strong { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 12px; }
-  .board { display: grid; grid-template: repeat(var(--size), minmax(0, 1fr)) / repeat(var(--size), minmax(0, 1fr)); gap: clamp(3px, 1vw, 5px); background: var(--board); border-radius: 18px; padding: clamp(8px, 2.4vw, 12px); touch-action: none; -webkit-user-select: none; user-select: none; aspect-ratio: 1; overflow: hidden; isolation: isolate; cursor: grab; }
+  .board { display: grid; grid-template: repeat(var(--size), minmax(0, 1fr)) / repeat(var(--size), minmax(0, 1fr)); gap: clamp(3px, 1vw, 5px); background: var(--board); border-radius: 18px; padding: clamp(8px, 2.4vw, 12px); touch-action: none; aspect-ratio: 1; overflow: hidden; isolation: isolate; cursor: grab; }
   .board.dragging { cursor: grabbing; }
   .cell { background: var(--cell); border-radius: 9px; display: grid; place-items: center; position: relative; aspect-ratio: 1; }
   .piece { position: relative; }
