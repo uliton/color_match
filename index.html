@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="manifest" href="./app.webmanifest">
+<title>Color Match · MVP 0.1</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f5f6f8;
+    --text: #27313d;
+    --muted: #5f6b79;
+    --panel: #fff;
+    --border: #dce1e7;
+    --tab: #e7eaf0;
+    --accent: #263d58;
+    --accent-text: #fff;
+    --board: #e9edf2;
+    --cell: #dfe5eb;
+    --wall-base: #c1cbd8;
+    --wall-shadow: #55667e59;
+    --wall-border: #8797aa;
+    --wall-joint: #98a8bb;
+    --wall-face-light: #e3eaf2;
+    --wall-face-dark: #b8c5d5;
+    --selection: #364b63;
+    --overlay: #17223280;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #151a22;
+    --text: #eef2f8;
+    --muted: #b3bfcd;
+    --panel: #212936;
+    --border: #3e4a5b;
+    --tab: #293443;
+    --accent: #a8c8ec;
+    --accent-text: #14273d;
+    --board: #202834;
+    --cell: #303a49;
+    --wall-base: #3c4758;
+    --wall-shadow: #0d162099;
+    --wall-border: #8e9bab80;
+    --wall-joint: #343f50;
+    --wall-face-light: #7b889b;
+    --wall-face-dark: #566376;
+    --selection: #a8c8ec;
+    --overlay: #080b11bb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 16px system-ui, -apple-system, sans-serif; }
+  [hidden] { display: none !important; }
+  main { max-width: 510px; margin: auto; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); min-height: 100vh; min-height: 100svh; }
+  .game-header { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+  .header-actions { display: flex; justify-self: end; gap: 8px; }
+  #back { justify-self: start; padding-inline: 8px; font-size: 14px; white-space: nowrap; }
+  h1 { font-size: 24px; margin: 0; }
+  .stat span, .notice, .difficulty-options small { color: var(--muted); }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  button:focus-visible, .choice-options input:focus-visible + span { outline: 2px solid var(--selection); outline-offset: 3px; }
+  .setup { position: relative; width: 100%; max-width: 420px; margin: 0 auto; padding: clamp(28px, 8svh, 72px) 0 24px; }
+  .brand { text-align: center; margin-bottom: 32px; }
+  .brand h1 { font-size: clamp(32px, 9vw, 46px); }
+  .logo { --dot-size: 20px; display: grid; grid-template-columns: repeat(3, var(--dot-size)); grid-template-rows: repeat(2, var(--dot-size)); justify-content: center; gap: 5px; margin-bottom: 14px; }
+  .game-header .logo { --dot-size: 11px; gap: 3px; margin: 0; }
+  .logo span { background: var(--dot); border-radius: 50%; box-shadow: inset 0 2px 3px #ffffff70; }
+  #setupForm { display: grid; gap: 20px; }
+  fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+  legend { font-weight: 650; padding: 0; margin-bottom: 8px; }
+  .choice-options { display: grid; grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr)); gap: 8px; }
+  .choice-options label { position: relative; }
+  .choice-options input { position: absolute; opacity: 0; }
+  .choice-options input + span { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 12px; background: var(--tab); font-weight: 600; cursor: pointer; }
+  .choice-options input:checked + span, .primary { background: var(--accent); color: var(--accent-text); }
+  .difficulty-options { --columns: 3; }
+  .difficulty-options input + span { flex-direction: column; gap: 2px; padding: 6px 2px; text-align: center; }
+  .difficulty-options small { font-size: 11px; font-weight: 500; }
+  .difficulty-options input:checked + span small { color: inherit; }
+  .settings { display: grid; background: var(--panel); padding: 12px; border-radius: 14px; gap: 12px; }
+  .setting legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .color-options { --columns: 4; }
+  .color-options input + span { flex-direction: column; gap: 3px; }
+  .palette-preview { display: flex; gap: 3px; }
+  .palette-preview span { width: 5px; height: 5px; border-radius: 50%; }
+  .size-options { --columns: 5; gap: 5px; }
+  .size-options input + span { font-size: 13px; white-space: nowrap; }
+  .shape-options input + span { flex-direction: column; gap: 5px; padding: 6px; font-size: 13px; }
+  .shape-preview { display: flex; gap: 5px; }
+  .shape-preview .piece { width: 12px; height: 12px; }
+  .primary, .secondary { min-height: 44px; border-radius: 11px; padding: 8px 14px; font-weight: 600; }
+  .secondary { background: var(--panel); border: 1px solid var(--border); }
+  [data-theme-toggle] { position: relative; width: 44px; padding: 0; }
+  [data-theme-toggle]::before, [data-theme-toggle]::after { position: absolute; pointer-events: none; }
+  :root[data-theme="light"] [data-theme-toggle]::before {
+    content: ''; width: 15px; height: 15px; top: 10px; left: 17px;
+    border-radius: 50%; box-shadow: -5px 4px 0 currentColor;
+  }
+  :root[data-theme="dark"] [data-theme-toggle]::before {
+    content: ''; inset: 50% auto auto 50%; width: 10px; height: 10px;
+    transform: translate(-50%, -50%); border: 1.5px solid currentColor; border-radius: 50%;
+  }
+  :root[data-theme="dark"] [data-theme-toggle]::after {
+    content: ''; inset: 50% auto auto 50%; width: 2px; height: 2px;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    box-shadow: 0 -10px currentColor, 7px -7px currentColor, 10px 0 currentColor, 7px 7px currentColor,
+      0 10px currentColor, -7px 7px currentColor, -10px 0 currentColor, -7px -7px currentColor;
+  }
+  #setupTheme { position: absolute; top: 0; right: 0; }
+  #pause { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 44px; padding: 0; }
+  #pause::before, #pause::after { content: ''; width: 6px; height: 19px; border-radius: 2px; background: currentColor; }
+  #play { min-height: 50px; }
+  .game { display: flex; flex-direction: column; min-height: calc(100vh - 32px); min-height: calc(100svh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom))); }
+  .game-stage { margin-block: auto; padding-top: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: var(--panel); border-radius: 12px; padding: 12px 4px; text-align: center; }
+  .stat strong { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; }
+  .board { display: grid; grid-template: repeat(var(--size), minmax(0, 1fr)) / repeat(var(--size), minmax(0, 1fr)); gap: clamp(3px, 1vw, 5px); background: var(--board); border-radius: 18px; padding: clamp(8px, 2.4vw, 12px); touch-action: none; -webkit-user-select: none; user-select: none; aspect-ratio: 1; overflow: hidden; isolation: isolate; cursor: grab; }
+  .board.dragging { cursor: grabbing; }
+  .cell { background: var(--cell); border-radius: 9px; display: grid; place-items: center; position: relative; aspect-ratio: 1; }
+  .piece { position: relative; }
+  .piece::before { content: ''; position: absolute; inset: 0; background: var(--piece-color); border-radius: 50%; box-shadow: inset 0 2px 3px #ffffff70, 0 3px 4px #10172335; }
+  .piece[data-shape="square"]::before { border-radius: 16%; }
+  .piece[data-shape="oval"]::before { inset-block: 16%; }
+  .piece[data-shape="triangle"]::before { clip-path: polygon(50% 0, 100% 94%, 0 94%); }
+  .piece[data-shape="star"]::before { clip-path: polygon(50% 0, 64% 32%, 100% 36%, 74% 61%, 81% 97%, 50% 79%, 19% 97%, 26% 61%, 0 36%, 36% 32%); }
+  .piece[data-shape="diamond"]::before { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  .piece[data-shape="cross"]::before { clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%); }
+  .piece:is([data-shape="triangle"], [data-shape="star"], [data-shape="diamond"], [data-shape="cross"])::before { border-radius: 0; }
+  .ball { width: 82%; height: 82%; z-index: 1; pointer-events: none; }
+  .ball.moving { z-index: 2; }
+  .ball.held { z-index: 3; }
+  .shield { display: none; position: absolute; inset: 16%; opacity: .8; filter: drop-shadow(0 1px 1px #172c49a0); }
+  .ball.reinforced .shield { display: block; }
+  .shield::before, .shield::after {
+    content: ''; position: absolute;
+    clip-path: polygon(50% 0, 95% 15%, 91% 58%, 78% 79%, 50% 100%, 22% 79%, 9% 58%, 5% 15%);
+  }
+  .shield::before { inset: 0; background: linear-gradient(145deg, #fff 3%, #d6f7ffb0 32%, #58a1df6b 70%, #f3fdffeb); }
+  .shield::after { inset: 7%; background: linear-gradient(145deg, #effbffbb, #498cba12 54%, #377ab57a); }
+  .cell.wall { cursor: default; background: var(--wall-base); box-shadow: inset 0 1px 2px var(--wall-shadow); }
+  .cell.wall .ball { visibility: hidden; }
+  .cell.wall::before {
+    content: ''; position: absolute; inset: 10%; border-radius: 5px;
+    border: 1px solid var(--wall-border);
+    background: linear-gradient(transparent 46%, var(--wall-joint) 46% 54%, transparent 54%),
+      linear-gradient(90deg, transparent 58%, var(--wall-joint) 58% 65%, transparent 65%) top / 100% 50% no-repeat,
+      linear-gradient(90deg, transparent 30%, var(--wall-joint) 30% 37%, transparent 37%) bottom / 100% 50% no-repeat,
+      linear-gradient(160deg, var(--wall-face-light), var(--wall-face-dark));
+  }
+  .cell.selected { outline: 3px solid var(--selection); outline-offset: -2px; }
+  .notice { min-height: 2.5em; text-align: center; font-size: 14px; margin: 10px 0; }
+  .goal { background: var(--panel); padding: 12px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; }
+  .dialog { background: var(--panel); color: var(--text); border: 0; border-radius: 20px; padding: 24px; width: min(340px, calc(100% - 32px)); text-align: center; }
+  .dialog::backdrop { background: var(--overlay); }
+  .dialog h2 { margin: 0 0 16px; }
+  .dialog-actions { display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <section id="setup" class="setup" aria-labelledby="setupTitle">
+    <button id="setupTheme" class="secondary" type="button" data-theme-toggle aria-label="Увімкнути темну тему"></button>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <span style="--dot:#E8B34E"></span><span style="--dot:#598BCB"></span><span style="--dot:#65AD8A"></span>
+        <span style="--dot:#BD78A6"></span><span style="--dot:#E17C70"></span>
+      </div>
+      <h1 id="setupTitle">Color Match</h1>
+    </div>
+    <form id="setupForm">
+      <fieldset id="modeOptions" hidden>
+        <legend>Режим гри</legend>
+        <div class="choice-options">
+          <label><input type="radio" name="mode" value="endless" checked><span>На час</span></label>
+          <label><input type="radio" name="mode" value="levels"><span>Рівні</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Складність</legend>
+        <div class="settings">
+          <div class="choice-options difficulty-options" role="radiogroup" aria-label="Рівень складності">
+            <label><input type="radio" name="difficulty" value="1" checked><span>1<small>Звичайна</small></span></label>
+            <label><input type="radio" name="difficulty" value="2"><span>2<small>Щити</small></span></label>
+            <label><input type="radio" name="difficulty" value="3"><span>3<small>Щити й стіни</small></span></label>
+          </div>
+          <fieldset class="setting">
+            <legend>Кольори</legend>
+            <div class="choice-options color-options">
+              <label><input type="radio" name="colorCount" value="4"><span>4<span class="palette-preview" aria-hidden="true"></span></span></label>
+              <label><input type="radio" name="colorCount" value="5" checked><span>5<span class="palette-preview" aria-hidden="true"></span></span></label>
+              <label><input type="radio" name="colorCount" value="6"><span>6<span class="palette-preview" aria-hidden="true"></span></span></label>
+              <label><input type="radio" name="colorCount" value="7"><span>7<span class="palette-preview" aria-hidden="true"></span></span></label>
+            </div>
+          </fieldset>
+          <fieldset class="setting">
+            <legend>Розмір поля</legend>
+            <div class="choice-options size-options">
+              <label><input type="radio" name="boardSize" value="5"><span>5×5</span></label>
+              <label><input type="radio" name="boardSize" value="6"><span>6×6</span></label>
+              <label><input type="radio" name="boardSize" value="7" checked><span>7×7</span></label>
+              <label><input type="radio" name="boardSize" value="8"><span>8×8</span></label>
+              <label><input type="radio" name="boardSize" value="9"><span>9×9</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Форми</legend>
+        <div class="choice-options shape-options">
+          <label><input type="radio" name="appearance" value="circles" checked><span><span class="shape-preview" data-preview="circles" aria-hidden="true"></span>Кульки</span></label>
+          <label><input type="radio" name="appearance" value="shapes"><span><span class="shape-preview" data-preview="shapes" aria-hidden="true"></span>Фігурки</span></label>
+        </div>
+      </fieldset>
+      <button type="submit" class="primary" id="play">ГРАТИ</button>
+    </form>
+  </section>
+  <section id="game" class="game" aria-labelledby="gameTitle" hidden>
+    <header class="game-header">
+      <button id="back" class="secondary" type="button">← До вибору</button>
+      <h1 id="gameTitle" class="logo" aria-label="Color Match" tabindex="-1">
+        <span style="--dot:#E8B34E" aria-hidden="true"></span><span style="--dot:#598BCB" aria-hidden="true"></span><span style="--dot:#65AD8A" aria-hidden="true"></span>
+        <span style="--dot:#BD78A6" aria-hidden="true"></span><span style="--dot:#E17C70" aria-hidden="true"></span>
+      </h1>
+      <div class="header-actions">
+        <button id="pause" class="secondary" type="button" aria-label="Пауза"></button>
+        <button id="theme" class="secondary" type="button" data-theme-toggle aria-label="Увімкнути темну тему"></button>
+      </div>
+    </header>
+    <div class="game-stage">
+      <div id="goal" class="goal" hidden></div>
+      <div class="stats">
+        <div class="stat"><span>Очки</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Час</span><strong id="metric">120</strong></div>
+        <div class="stat"><span id="movesLabel">Ходи</span><strong id="moves">0</strong></div>
+      </div>
+      <div id="board" class="board" role="grid" aria-label="Ігрове поле"></div>
+      <div class="notice" id="notice" role="status"></div>
+    </div>
+  </section>
+</main>
+<dialog class="dialog" id="overlay" aria-labelledby="dialogTitle">
+  <h2 id="dialogTitle"></h2>
+  <p id="dialogText" hidden></p>
+  <div class="dialog-actions">
+    <button id="dialogAction" class="primary" type="button">Продовжити</button>
+    <button id="dialogRestart" class="secondary" type="button">Заново</button>
+    <button id="dialogBack" class="secondary" type="button">До налаштувань</button>
+  </div>
+</dialog>
+<script>
+const COLORS = ['#E8B34E', '#598BCB', '#65AD8A', '#BD78A6', '#E17C70', '#8864C6', '#818995'];
+const SHAPES = ['square', 'oval', 'triangle', 'star', 'diamond', 'cross', 'circle'];
+const WALL = { wall: true };
+const $ = id => document.getElementById(id);
+const field = $('board');
+const dialog = $('overlay');
+const rnd = n => Math.floor(Math.random() * n);
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const themeKey = 'color-match-theme';
+const themeButtons = document.querySelectorAll('[data-theme-toggle]');
+let themePreference = null;
+try {
+  const saved = localStorage.getItem(themeKey);
+  if (saved === 'light' || saved === 'dark') themePreference = saved;
+} catch {
+  // The theme still works if browser storage is unavailable.
+}
+
+function applyTheme() {
+  const theme = themePreference ?? (systemDark.matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = theme;
+  for (const button of themeButtons) {
+    button.setAttribute('aria-label', theme === 'dark' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#151a22' : '#f5f6f8';
+}
+
+for (const button of themeButtons) {
+  button.addEventListener('click', () => {
+    themePreference = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(themeKey, themePreference); } catch {}
+    applyTheme();
+  });
+}
+systemDark.addEventListener('change', applyTheme);
+applyTheme();
+
+let cells = [], balls = [];
+let size = 7, colorCount = 5, difficulty = 1, variedShapes = false;
+const animations = new Set();
+let board = [], mode = 'endless', score = 0, moves = 0, time = 120, elapsed = 0, level = 1;
+let selected = -1, busy = false, paused = false, finished = false;
+let timer = null, lastTick = performance.now(), session = 0, down = null;
+
+function buildField() {
+  field.style.setProperty('--size', size);
+  field.setAttribute('aria-label', `Ігрове поле ${size} × ${size}`);
+  field.innerHTML = Array.from({ length: size * size }, (_, i) =>
+    `<div class="cell" data-i="${i}" role="gridcell"><div class="piece ball"><span class="shield" aria-hidden="true"></span></div></div>`
+  ).join('');
+  cells = [...field.children];
+  balls = cells.map(cell => cell.firstElementChild);
+}
+
+function matchLines(b) {
+  const lines = [];
+  for (const stride of [1, size]) {
+    for (let line = 0; line < size; line++) {
+      const start = stride === 1 ? line * size : line;
+      for (let from = 0; from < size;) {
+        const color = b[start + from * stride]?.color;
+        let end = from + 1;
+        while (end < size && color != null && b[start + end * stride]?.color === color) end++;
+        if (color != null && end - from >= 3) {
+          lines.push(Array.from({ length: end - from }, (_, i) => start + (from + i) * stride));
+        }
+        from = end;
+      }
+    }
+  }
+  return lines;
+}
+
+function lineTiles(b) {
+  return matchLines(b).map(line => new Set(line.map(i => b[i])));
+}
+
+function newLines(b, previousLines) {
+  // A line that survives shield damage must form a new combination to count again.
+  return matchLines(b).filter(line =>
+    !previousLines.some(previous => line.every(i => previous.has(b[i])))
+  );
+}
+
+function timeBonus(lines) {
+  return lines.reduce((bonus, line) => bonus + (line.length >= 5 ? 6 : line.length === 4 ? 4 : 0), 0);
+}
+
+function adjacent(a, b) {
+  return a >= 0 && b >= 0 && Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1;
+}
+
+function canSwap(a, b) {
+  return adjacent(a, b) && board[a] !== WALL && board[b] !== WALL;
+}
+
+function hasMove(b) {
+  const previousLines = lineTiles(b);
+  for (let i = 0; i < b.length; i++) {
+    for (const j of [i % size < size - 1 ? i + 1 : -1, i + size < b.length ? i + size : -1]) {
+      if (j < 0 || b[i] === WALL || b[j] === WALL || b[i].color === b[j].color) continue;
+      [b[i], b[j]] = [b[j], b[i]];
+      const yes = newLines(b, previousLines).length > 0;
+      [b[i], b[j]] = [b[j], b[i]];
+      if (yes) return true;
+    }
+  }
+  return false;
+}
+
+function makeBall(color) {
+  return { color, hits: difficulty >= 2 && Math.random() < .15 ? 2 : 1 };
+}
+
+function placeWalls() {
+  const walls = new Set();
+  if (difficulty < 3) return walls;
+  const candidates = [];
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) candidates.push(y * size + x);
+  }
+  const count = size < 7 ? 2 : 3;
+  while (walls.size < count) walls.add(candidates.splice(rnd(candidates.length), 1)[0]);
+  return walls;
+}
+
+function generate(walls = placeWalls()) {
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    const b = [];
+    for (let i = 0; i < size * size; i++) {
+      if (walls.has(i)) {
+        b.push(WALL);
+        continue;
+      }
+      const valid = Array.from({ length: colorCount }, (_, color) => color).filter(color =>
+        !(i % size >= 2 && b[i - 1].color === color && b[i - 2].color === color) &&
+        !(i >= 2 * size && b[i - size].color === color && b[i - 2 * size].color === color)
+      );
+      b.push(makeBall(valid[rnd(valid.length)]));
+    }
+    if (!hasMove(b)) continue;
+    if (difficulty >= 2 && !b.some(tile => tile.hits === 2)) {
+      const pieces = b.filter(tile => tile !== WALL);
+      pieces[rnd(pieces.length)].hits = 2;
+    }
+    return b;
+  }
+  throw Error('Cannot generate board');
+}
+
+function paintPiece(piece, color, showShape) {
+  piece.style.setProperty('--piece-color', COLORS[color]);
+  if (showShape) piece.dataset.shape = SHAPES[color];
+  else delete piece.dataset.shape;
+}
+
+for (const preview of document.querySelectorAll('[data-preview]')) {
+  for (const color of [0, 2, 3]) {
+    const piece = document.createElement('span');
+    piece.className = 'piece';
+    paintPiece(piece, color, preview.dataset.preview === 'shapes');
+    preview.append(piece);
+  }
+}
+
+for (const option of document.querySelectorAll('.color-options input')) {
+  const preview = option.nextElementSibling.querySelector('.palette-preview');
+  for (const color of COLORS.slice(0, Number(option.value))) {
+    const dot = document.createElement('span');
+    dot.style.backgroundColor = color;
+    preview.append(dot);
+  }
+}
+
+function paintBoard() {
+  for (let i = 0; i < balls.length; i++) {
+    const wall = board[i] === WALL;
+    if (cells[i].classList.toggle('wall', wall)) cells[i].setAttribute('aria-label', 'Стіна');
+    else {
+      cells[i].removeAttribute('aria-label');
+      paintPiece(balls[i], board[i].color, variedShapes);
+    }
+    balls[i].classList.toggle('reinforced', board[i].hits === 2);
+    cells[i].classList.toggle('selected', selected === i);
+  }
+}
+
+function levelMoves() { return Math.max(12, 20 - Math.floor((level - 1) / 5)); }
+function levelTarget() { return 650 + level * 170; }
+function paintMetric() {
+  const value = String(mode === 'endless' ? Math.ceil(time) : Math.floor(elapsed));
+  if ($('metric').textContent !== value) $('metric').textContent = value;
+}
+
+function paintStats() {
+  $('score').textContent = score;
+  paintMetric();
+  const levels = mode === 'levels';
+  $('movesLabel').textContent = levels ? 'Ходів лишилось' : 'Ходи';
+  $('moves').textContent = levels ? Math.max(0, levelMoves() - moves) : moves;
+  $('goal').hidden = !levels;
+  if (levels) $('goal').textContent = `Рівень ${level} · Мета: ${levelTarget()} очок`;
+}
+
+function notify(text) { $('notice').textContent = text; }
+function stopTimer() {
+  if (timer !== null) clearInterval(timer);
+  timer = null;
+}
+
+function tick() {
+  const now = performance.now();
+  if (!document.hidden && !busy && !paused && !finished) {
+    const delta = (now - lastTick) / 1000;
+    if (mode === 'endless') time = Math.max(0, time - delta);
+    else elapsed += delta;
+    paintMetric();
+    if (mode === 'endless' && time <= 0) finish(false);
+  }
+  lastTick = now;
+}
+
+function startTimer() {
+  stopTimer();
+  lastTick = performance.now();
+  timer = setInterval(tick, 100);
+}
+
+function showDialog(title, action, summary = '') {
+  $('dialogTitle').textContent = title;
+  $('dialogText').textContent = summary;
+  $('dialogText').hidden = !summary;
+  $('dialogAction').textContent = action;
+  $('dialogRestart').hidden = !paused;
+  if (!dialog.open) dialog.showModal();
+  $('dialogAction').focus();
+}
+
+function finish(win) {
+  finished = true;
+  paused = false;
+  stopTimer();
+  cancelDrag();
+  showDialog(win ? 'Рівень пройдено' : 'Партію завершено',
+    win ? 'Наступний рівень' : 'Грати ще раз', `Очки: ${score}. Ходи: ${moves}.`);
+}
+
+function stopRound() {
+  session++;
+  stopTimer();
+  cancelDrag();
+  for (const animation of animations) animation.cancel();
+  animations.clear();
+  for (const ball of balls) ball.classList.remove('moving', 'held');
+  paused = false;
+  if (dialog.open) dialog.close();
+}
+
+function reset(keepLevel = false) {
+  stopRound();
+  if (!keepLevel) level = 1;
+  board = generate();
+  score = 0;
+  moves = 0;
+  time = 120;
+  elapsed = 0;
+  selected = -1;
+  busy = false;
+  finished = false;
+  notify('');
+  paintBoard();
+  paintStats();
+  startTimer();
+}
+
+function animateBall(i, frames, duration, easing) {
+  if (reducedMotion.matches) return Promise.resolve();
+  const animation = balls[i].animate(frames, { duration, easing });
+  if (paused) animation.pause();
+  animations.add(animation);
+  return animation.finished.catch(() => {}).finally(() => animations.delete(animation));
+}
+
+const translate = (x, y) => `translate(${x}px, ${y}px)`;
+const slide = (i, fromX, fromY, toX, toY, duration) => animateBall(i, [
+  { transform: translate(fromX, fromY) },
+  { transform: translate(toX, toY) }
+], duration, 'cubic-bezier(.22,.61,.36,1)');
+
+async function exchange(a, b, token, offsetX = 0, offsetY = 0) {
+  const dx = cells[b].offsetLeft - cells[a].offsetLeft;
+  const dy = cells[b].offsetTop - cells[a].offsetTop;
+  balls[a].classList.add('moving');
+  const duration = Math.max(180, Math.min(300, 180 * Math.hypot(dx - offsetX, dy - offsetY) / Math.hypot(dx, dy)));
+  await Promise.all([
+    slide(a, offsetX, offsetY, dx, dy, duration),
+    slide(b, 0, 0, -dx, -dy, duration)
+  ]);
+  if (token !== session) return false;
+  balls[a].classList.remove('moving');
+  [board[a], board[b]] = [board[b], board[a]];
+  paintBoard();
+  return true;
+}
+
+function resolveHits(lines) {
+  const removed = new Set();
+  const exposed = new Set();
+  for (const line of lines) {
+    for (const i of line) {
+      const tile = board[i];
+      if (removed.has(i)) continue;
+      tile.hits--;
+      if (tile.hits === 0) {
+        removed.add(i);
+        exposed.delete(i);
+      } else {
+        exposed.add(i);
+      }
+    }
+  }
+  return { removed, exposed };
+}
+
+function collapse(removed) {
+  const falling = [];
+  for (let x = 0; x < size; x++) {
+    let dest = size - 1;
+    for (let y = size - 1; y >= -1; y--) {
+      const from = y * size + x;
+      if (y < 0 || board[from] === WALL) {
+        const newCount = dest - y;
+        for (; dest > y; dest--) {
+          const i = dest * size + x;
+          board[i] = makeBall(rnd(colorCount));
+          // Refill below a wall in place so pieces never appear to pass through it.
+          falling.push({ i, rows: y < 0 ? newCount : 0 });
+        }
+        dest = y - 1;
+        continue;
+      }
+      if (removed.has(from)) continue;
+      const to = dest * size + x;
+      board[to] = board[from];
+      if (dest !== y) falling.push({ i: to, rows: dest - y });
+      dest--;
+    }
+  }
+  return falling;
+}
+
+function unlock() {
+  lastTick = performance.now();
+  busy = false;
+}
+
+async function swap(a, b, offsetX = 0, offsetY = 0) {
+  if (busy || paused || document.hidden || finished || !canSwap(a, b)) return;
+  tick();
+  if (finished) return;
+  busy = true;
+  selected = -1;
+  paintBoard();
+  const token = session;
+  const previousLines = lineTiles(board);
+  const sameColor = board[a].color === board[b].color;
+  if (!await exchange(a, b, token, offsetX, offsetY)) return;
+
+  let lines = sameColor ? [] : newLines(board, previousLines);
+  if (!lines.length) {
+    if (!await exchange(b, a, token)) return;
+    unlock();
+    notify('Немає комбінації — хід скасовано');
+    return;
+  }
+
+  moves++;
+  let total = 0, bonus = 0, chain = 0, shields = 0;
+  while (lines.length && chain < 30) {
+    chain++;
+    const beforeFall = lineTiles(board);
+    const { removed, exposed } = resolveHits(lines);
+    shields += exposed.size;
+    total += removed.size * 10 * chain;
+    if (mode === 'endless') bonus += timeBonus(lines);
+    for (const i of exposed) balls[i].classList.remove('reinforced');
+    await Promise.all([...removed].map(i => animateBall(i, [
+      { transform: 'scale(1)', opacity: 1 },
+      { transform: 'scale(.18)', opacity: 0 }
+    ], 300, 'ease-in-out')));
+    if (token !== session) return;
+
+    const falling = collapse(removed);
+    const step = cells[size].offsetTop - cells[0].offsetTop;
+    paintBoard();
+    await Promise.all(falling.map(({ i, rows }) => {
+      const frames = rows ? [
+        { transform: translate(0, -rows * step) },
+        { transform: translate(0, 0) }
+      ] : [
+        { opacity: 0, transform: 'scale(.65)' },
+        { opacity: 1, transform: 'scale(1)' }
+      ];
+      return animateBall(i, frames, 350 + rows * 28, 'cubic-bezier(.55,.04,.78,.65)');
+    }));
+    if (token !== session) return;
+    lines = newLines(board, beforeFall);
+  }
+
+  score += total;
+  const credited = mode === 'endless' ? Math.min(180 - time, bonus) : 0;
+  time += credited;
+  const reshuffled = lines.length > 0 || !hasMove(board);
+  if (reshuffled) {
+    const walls = new Set();
+    board.forEach((tile, i) => { if (tile === WALL) walls.add(i); });
+    board = generate(walls);
+  }
+  notify([
+    total > 0 && `+${total} очок`,
+    credited > 0 && `+${Math.ceil(credited)} с`,
+    chain > 1 && `Каскад ×${chain}`,
+    shields > 0 && `Знято захист: ${shields}`,
+    reshuffled && 'Поле перемішано'
+  ].filter(Boolean).join(' · '));
+  unlock();
+  paintBoard();
+  paintStats();
+  if (mode === 'levels') {
+    if (score >= levelTarget()) finish(true);
+    else if (moves >= levelMoves()) finish(false);
+  }
+}
+
+function pick(i) {
+  if (busy || paused || document.hidden || finished || board[i] === WALL) return;
+  if (i === selected) {
+    selected = -1;
+  } else if (adjacent(selected, i)) {
+    swap(selected, i);
+    return;
+  } else {
+    selected = i;
+  }
+  paintBoard();
+}
+
+function clearDrag() {
+  if (!down) return null;
+  const drag = down;
+  down = null;
+  balls[drag.i].style.transform = '';
+  balls[drag.i].classList.remove('held');
+  field.classList.remove('dragging');
+  if (field.hasPointerCapture(drag.pointer)) field.releasePointerCapture(drag.pointer);
+  return drag;
+}
+
+function cancelDrag() { clearDrag(); }
+
+function updateDrag(e) {
+  down.dx = e.clientX - down.x;
+  down.dy = e.clientY - down.y;
+  const distance = Math.max(Math.abs(down.dx), Math.abs(down.dy));
+  if (distance >= 8) down.dragged = true;
+  if (!down.dragged) return;
+  balls[down.i].style.transform = translate(down.dx, down.dy);
+  if (selected !== -1) {
+    selected = -1;
+    paintBoard();
+  }
+  field.classList.add('dragging');
+}
+
+async function returnBall(drag) {
+  if (!drag.dragged || busy || paused || document.hidden || finished) return;
+  const token = session;
+  busy = true;
+  balls[drag.i].classList.add('moving');
+  await slide(drag.i, drag.dx, drag.dy, 0, 0, 180);
+  if (token !== session) return;
+  balls[drag.i].classList.remove('moving');
+  unlock();
+}
+
+field.addEventListener('pointerdown', e => {
+  if (down || busy || paused || document.hidden || finished || e.button !== 0) return;
+  const cell = e.target.closest('[data-i]');
+  if (!cell || board[Number(cell.dataset.i)] === WALL) return;
+  down = { pointer: e.pointerId, i: Number(cell.dataset.i), x: e.clientX, y: e.clientY, dx: 0, dy: 0, dragged: false };
+  balls[down.i].classList.add('held');
+  field.setPointerCapture(e.pointerId);
+});
+
+field.addEventListener('pointermove', e => {
+  if (down?.pointer === e.pointerId) updateDrag(e);
+});
+
+field.addEventListener('pointerup', e => {
+  if (down?.pointer !== e.pointerId) return;
+  updateDrag(e);
+  const drag = clearDrag();
+  const { i, dx, dy } = drag;
+  if (!drag.dragged) {
+    pick(i);
+    return;
+  }
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > 16) {
+    let x = i % size;
+    let y = Math.floor(i / size);
+    if (Math.abs(dx) > Math.abs(dy)) x += Math.sign(dx);
+    else y += Math.sign(dy);
+    if (x >= 0 && x < size && y >= 0 && y < size && canSwap(i, y * size + x)) {
+      swap(i, y * size + x, dx, dy);
+      return;
+    }
+  }
+  returnBall(drag);
+});
+
+for (const event of ['pointercancel', 'lostpointercapture']) {
+  field.addEventListener(event, e => {
+    if (down?.pointer === e.pointerId) returnBall(clearDrag());
+  });
+}
+
+function returnToSetup() {
+  stopRound();
+  $('game').hidden = true;
+  $('setup').hidden = false;
+  $('play').focus();
+}
+
+function resumeGame() {
+  paused = false;
+  lastTick = performance.now();
+  for (const animation of animations) {
+    if (animation.playState === 'paused') animation.play();
+  }
+  dialog.close();
+}
+
+$('setupForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const settings = event.currentTarget.elements;
+  mode = $('modeOptions').hidden ? 'endless' : settings.mode.value;
+  size = Number(settings.boardSize.value);
+  colorCount = Number(settings.colorCount.value);
+  difficulty = Number(settings.difficulty.value);
+  variedShapes = settings.appearance.value === 'shapes';
+  $('setup').hidden = true;
+  $('game').hidden = false;
+  buildField();
+  reset();
+  $('gameTitle').focus();
+});
+$('pause').onclick = () => {
+  tick();
+  if (finished) return;
+  paused = true;
+  cancelDrag();
+  for (const animation of animations) {
+    if (animation.playState === 'running') animation.pause();
+  }
+  showDialog('Пауза', 'Продовжити');
+};
+$('back').onclick = $('dialogBack').onclick = returnToSetup;
+$('dialogRestart').onclick = () => reset(mode === 'levels');
+$('dialogAction').onclick = () => {
+  if (paused) {
+    resumeGame();
+    return;
+  }
+  if (mode === 'levels' && score >= levelTarget()) level++;
+  reset(mode === 'levels');
+};
+dialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  if (paused) resumeGame();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) cancelDrag();
+  lastTick = performance.now();
+});
+</script>
+</body>
+</html>
