@@ -89,9 +89,11 @@
   .palette-preview span { width: 5px; height: 5px; border-radius: 50%; }
   .size-options { --columns: 5; gap: 5px; }
   .size-options input + span { font-size: 13px; white-space: nowrap; }
+  .shape-options { --columns: 3; }
   .shape-options input + span { flex-direction: column; gap: 5px; padding: 6px; font-size: 13px; }
   .shape-preview { display: flex; gap: 5px; }
   .shape-preview .piece { width: 12px; height: 12px; }
+  .shape-preview [data-nut] { width: 18px; height: 18px; }
   .primary, .secondary { min-height: 44px; border-radius: 11px; padding: 8px 14px; font-weight: 600; }
   .secondary { background: var(--panel); border: 1px solid var(--border); }
   [data-theme-toggle] { position: relative; width: 44px; padding: 0; }
@@ -132,6 +134,14 @@
   .piece[data-shape="diamond"]::before { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
   .piece[data-shape="cross"]::before { clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%); }
   .piece:is([data-shape="triangle"], [data-shape="star"], [data-shape="diamond"], [data-shape="cross"])::before { border-radius: 0; }
+  .piece[data-nut]::before {
+    inset: -8%; border-radius: 0; box-shadow: none;
+    background-image: url('./assets/nuts.png');
+    background-color: transparent;
+    background-size: 400% 200%;
+    background-position: var(--nut-x) var(--nut-y);
+    background-repeat: no-repeat;
+  }
   .ball { width: 82%; height: 82%; z-index: 1; pointer-events: none; }
   .ball.moving { z-index: 2; }
   .ball.held { z-index: 3; }
@@ -190,7 +200,7 @@
             <label><input type="radio" name="difficulty" value="3"><span>3<small>Щити й стіни</small></span></label>
           </div>
           <fieldset class="setting">
-            <legend>Кольори</legend>
+            <legend id="colorCountLabel">Кольори</legend>
             <div class="choice-options color-options">
               <label><input type="radio" name="colorCount" value="4"><span>4<span class="palette-preview" aria-hidden="true"></span></span></label>
               <label><input type="radio" name="colorCount" value="5" checked><span>5<span class="palette-preview" aria-hidden="true"></span></span></label>
@@ -211,10 +221,11 @@
         </div>
       </fieldset>
       <fieldset>
-        <legend>Форми</legend>
+        <legend>Вигляд</legend>
         <div class="choice-options shape-options">
           <label><input type="radio" name="appearance" value="circles" checked><span><span class="shape-preview" data-preview="circles" aria-hidden="true"></span>Кульки</span></label>
           <label><input type="radio" name="appearance" value="shapes"><span><span class="shape-preview" data-preview="shapes" aria-hidden="true"></span>Фігурки</span></label>
+          <label><input type="radio" name="appearance" value="nuts"><span><span class="shape-preview" data-preview="nuts" aria-hidden="true"></span>Горіхи</span></label>
         </div>
       </fieldset>
       <button type="submit" class="primary" id="play">ГРАТИ</button>
@@ -257,6 +268,7 @@
 <script>
 const COLORS = ['#E8B34E', '#598BCB', '#65AD8A', '#BD78A6', '#E17C70', '#8864C6', '#818995'];
 const SHAPES = ['square', 'oval', 'triangle', 'star', 'diamond', 'cross', 'circle'];
+const NUTS = ['Волоський горіх', 'Мигдаль', 'Фундук', 'Кеш’ю', 'Фісташка', 'Каштан', 'Пекан'];
 const WALL = { wall: true };
 const $ = id => document.getElementById(id);
 const field = $('board');
@@ -294,7 +306,7 @@ systemDark.addEventListener('change', applyTheme);
 applyTheme();
 
 let cells = [], balls = [];
-let size = 7, colorCount = 5, difficulty = 1, variedShapes = false;
+let size = 7, colorCount = 5, difficulty = 1, appearance = 'circles';
 const animations = new Set();
 let board = [], mode = 'endless', score = 0, moves = 0, time = 120, elapsed = 0, level = 1;
 let selected = -1, busy = false, paused = false, finished = false;
@@ -433,17 +445,26 @@ function generate(walls = placeWalls()) {
   throw Error('Cannot generate board');
 }
 
-function paintPiece(piece, color, showShape) {
+function paintPiece(piece, color, style) {
   piece.style.setProperty('--piece-color', COLORS[color]);
-  if (showShape) piece.dataset.shape = SHAPES[color];
+  if (style === 'shapes') piece.dataset.shape = SHAPES[color];
   else delete piece.dataset.shape;
+  if (style === 'nuts') {
+    piece.dataset.nut = NUTS[color];
+    piece.style.setProperty('--nut-x', `${color % 4 * 100 / 3}%`);
+    piece.style.setProperty('--nut-y', color < 4 ? '0%' : '100%');
+  } else {
+    delete piece.dataset.nut;
+    piece.style.removeProperty('--nut-x');
+    piece.style.removeProperty('--nut-y');
+  }
 }
 
 for (const preview of document.querySelectorAll('[data-preview]')) {
   for (const color of [0, 2, 3]) {
     const piece = document.createElement('span');
     piece.className = 'piece';
-    paintPiece(piece, color, preview.dataset.preview === 'shapes');
+    paintPiece(piece, color, preview.dataset.preview);
     preview.append(piece);
   }
 }
@@ -463,7 +484,8 @@ function paintBoard() {
     if (cells[i].classList.toggle('wall', wall)) cells[i].setAttribute('aria-label', 'Стіна');
     else {
       cells[i].removeAttribute('aria-label');
-      paintPiece(balls[i], board[i].color, variedShapes);
+      paintPiece(balls[i], board[i].color, appearance);
+      if (appearance === 'nuts') cells[i].setAttribute('aria-label', NUTS[board[i].color]);
     }
     balls[i].classList.toggle('reinforced', board[i].hits === 2);
     cells[i].classList.toggle('selected', selected === i);
@@ -825,6 +847,12 @@ function resumeGame() {
   dialog.close();
 }
 
+for (const option of document.querySelectorAll('input[name="appearance"]')) {
+  option.addEventListener('change', () => {
+    $('colorCountLabel').textContent = option.value === 'nuts' ? 'Види горіхів' : 'Кольори';
+  });
+}
+
 $('setupForm').addEventListener('submit', event => {
   event.preventDefault();
   const settings = event.currentTarget.elements;
@@ -832,7 +860,7 @@ $('setupForm').addEventListener('submit', event => {
   size = Number(settings.boardSize.value);
   colorCount = Number(settings.colorCount.value);
   difficulty = Number(settings.difficulty.value);
-  variedShapes = settings.appearance.value === 'shapes';
+  appearance = settings.appearance.value;
   $('setup').hidden = true;
   $('game').hidden = false;
   buildField();
