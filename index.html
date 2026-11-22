@@ -338,13 +338,20 @@ function matchPatterns(b) {
 }
 
 function patternTiles(b) {
-  return matchPatterns(b).map(pattern => new Set(pattern.map(i => b[i])));
+  return matchPatterns(b).map(pattern => ({
+    cells: pattern,
+    tiles: pattern.map(i => b[i])
+  }));
 }
 
 function newPatterns(b, previousPatterns) {
-  // A pattern that survives shield damage must form a new combination to count again.
+  // Skip only an identical pattern whose pieces stayed in the same cells.
+  // A surviving subset or a pattern formed after a fall is a new combination.
   return matchPatterns(b).filter(pattern =>
-    !previousPatterns.some(previous => pattern.every(i => previous.has(b[i])))
+    !previousPatterns.some(previous =>
+      previous.cells.length === pattern.length &&
+      pattern.every((cell, index) => previous.cells[index] === cell && previous.tiles[index] === b[cell])
+    )
   );
 }
 
