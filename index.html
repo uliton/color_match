@@ -147,6 +147,11 @@
     background-size: contain;
     background-position: center;
   }
+  .piece[data-nut="Жолудь"]::before {
+    background-image: url('./assets/acorn-13-3.png');
+    background-size: contain;
+    background-position: center;
+  }
   .ball { width: 82%; height: 82%; z-index: 1; pointer-events: none; }
   .ball.moving { z-index: 2; }
   .ball.held { z-index: 3; }
@@ -273,7 +278,7 @@
 <script>
 const COLORS = ['#E8B34E', '#598BCB', '#65AD8A', '#BD78A6', '#E17C70', '#8864C6', '#818995'];
 const SHAPES = ['square', 'oval', 'triangle', 'star', 'diamond', 'cross', 'circle'];
-const NUTS = ['Волоський горіх', 'Кеш’ю', 'Фісташка', 'Мигдаль', 'Буковий горіх', 'Пекан', 'Каштан'];
+const NUTS = ['Волоський горіх', 'Кеш’ю', 'Фісташка', 'Жолудь', 'Буковий горіх', 'Пекан', 'Каштан'];
 const WALL = { wall: true };
 const $ = id => document.getElementById(id);
 const field = $('board');
