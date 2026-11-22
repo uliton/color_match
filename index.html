@@ -136,7 +136,7 @@
   .piece:is([data-shape="triangle"], [data-shape="star"], [data-shape="diamond"], [data-shape="cross"])::before { border-radius: 0; }
   .piece[data-nut]::before {
     inset: -8%; border-radius: 0; box-shadow: none;
-    background-image: url('./assets/nuts.png');
+    background-image: url('./assets/nuts-selected.png');
     background-color: transparent;
     background-size: 400% 200%;
     background-position: var(--nut-x) var(--nut-y);
@@ -268,7 +268,7 @@
 <script>
 const COLORS = ['#E8B34E', '#598BCB', '#65AD8A', '#BD78A6', '#E17C70', '#8864C6', '#818995'];
 const SHAPES = ['square', 'oval', 'triangle', 'star', 'diamond', 'cross', 'circle'];
-const NUTS = ['Волоський горіх', 'Мигдаль', 'Фундук', 'Кеш’ю', 'Фісташка', 'Каштан', 'Пекан'];
+const NUTS = ['Волоський горіх', 'Кеш’ю', 'Фісташка', 'Мигдаль', 'Макадамія', 'Пекан', 'Каштан'];
 const WALL = { wall: true };
 const $ = id => document.getElementById(id);
 const field = $('board');
